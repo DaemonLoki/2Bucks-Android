@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">2Bucks</string>
     <string name="action_settings">Settings</string>
+    <string name="login_sign_up">LOGIN / SIGN UP</string>
+    <string name="enter_mail_here">Enter Mail here</string>
+    <string name="enter_password_here">Enter password here</string>
+    <string name="sign_out">Sign out</string>
+    <string name="start_betting">START BETTING</string>
+
+    <!-- Facebook SDK requisities-->
+    <string name="facebook_app_id">1738281243087564</string>
 </resources>

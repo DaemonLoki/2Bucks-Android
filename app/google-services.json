@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "139786766490",
+    "firebase_url": "https://2bucks.firebaseio.com",
+    "project_id": "firebase-bucks",
+    "storage_bucket": "firebase-bucks.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:139786766490:android:5560751cb7444ffe",
+        "android_client_info": {
+          "package_name": "com.stefanblos.app2bucks"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "139786766490-3q4n36ovngb4b2gd5gc1ur3tlpjen5v7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stefanblos.app2bucks",
+            "certificate_hash": "06D981FE0C7B98166230F8EDD5D0E0AD406F30E5"
+          }
+        },
+        {
+          "client_id": "139786766490-obv2vqd47ikv280jj6o90r5aku1tiai7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnrxj4Fas7NOO_79ncf77ujt0lEfYWRK4"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "139786766490-obv2vqd47ikv280jj6o90r5aku1tiai7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "139786766490-nd87e7mdmot9b5rhetj625kco6bd7l6p.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.stefanblos.-Bucks"
+              }
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
