@@ -112,6 +112,7 @@ public class LoginActivity extends AppCompatActivity {
 
                     if (newUser) {
                         Intent intent = new Intent(LoginActivity.this, OnboardingActivity.class);
+                        intent.putExtra("newUserToPutToFirebase", "yes");
                         startActivity(intent);
                         return;
                     }

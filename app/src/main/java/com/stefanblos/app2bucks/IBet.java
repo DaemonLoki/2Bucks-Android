@@ -19,6 +19,6 @@ public interface IBet {
     public String getWinner();
 
     // methods
-    public Map<String, String> createRequestDictionaryForFirebase();
-    public Map<String, String> createBetDictionaryForFirebase();
+    public Map<String, Object> createRequestDictionaryForFirebase();
+    public Map<String, Object> createBetDictionaryForFirebase();
 }

@@ -1,11 +1,16 @@
 package com.stefanblos.app2bucks;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.provider.SyncStateContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -24,6 +29,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 
@@ -36,10 +42,18 @@ public class OverviewActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthListener;
     private FirebaseDatabase mFirebaseDatabase;
     private DatabaseReference mBetsReference;
+    private ChildEventListener mBetsListener;
+    private DatabaseReference mRequestsReference;
+    private ChildEventListener mRequestListener;
+    private boolean mListenersAdded;
+
+    private BroadcastReceiver mFinishedLoadingReceiver;
+    private BroadcastReceiver mNewBetReceiver;
 
     // User credentials
     private String mEmail;
-    private String mUid;
+    private static String mUid;
+    private String mUserName;
 
     // Recycler view related
     private RecyclerView mRecyclerView;
@@ -48,6 +62,7 @@ public class OverviewActivity extends AppCompatActivity {
 
     // Data
     private ArrayList<Object> mBetData = new ArrayList<>();
+    private static Data mData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,41 +72,9 @@ public class OverviewActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         mAuth = FirebaseAuth.getInstance();
+        mData = Data.getInstance(this);
 
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
-                if (user != null) {
-                    // User is signed in
-
-                    if (getIntent() != null) {
-
-                        // get User name
-                        String userName = getIntent().getStringExtra("USERNAME");
-
-                        // set User credentials on Firebase "Users" node
-                        setUserCredentialsOnFirebase(user, userName);
-
-                        // TODO saveUserCredentialsToPreferences
-                        saveUserCredentialsToPreferences(user);
-                    }
-
-                    Toast.makeText(getApplicationContext(), "User is signed in with id: " + user.getUid(), Toast.LENGTH_LONG).show();
-                } else {
-                    // User is signed out
-
-                    Toast.makeText(getApplicationContext(), "User is signed out", Toast.LENGTH_LONG).show();
-
-                    // start LoginActivity
-                    Intent intent = new Intent(OverviewActivity.this, LoginActivity.class);
-                    startActivity(intent);
-                    return;
-                }
-            }
-
-        };
-
+        mAuthListener = createAuthStateListener();
         mRecyclerView = (RecyclerView) findViewById(R.id.betsRecyclerView);
 
         // set layout manager on recycler view
@@ -99,6 +82,7 @@ public class OverviewActivity extends AppCompatActivity {
         mRecyclerView.setLayoutManager(mLayoutManager);
 
         // specify adapter
+        mBetData = mData.getBetList();
         mAdapter = new BetAdapter(mBetData);
         mRecyclerView.setAdapter(mAdapter);
 
@@ -114,67 +98,54 @@ public class OverviewActivity extends AppCompatActivity {
 
         // Let's get started with Firebase Database
         mFirebaseDatabase = FirebaseDatabase.getInstance();
-        mBetsReference = mFirebaseDatabase.getReference("bets");
 
-        // Listen for bets
-        ChildEventListener childEventListener = new ChildEventListener() {
+        // Listen for requests
+        mRequestListener = createRequestListener();
+
+        mFinishedLoadingReceiver = new BroadcastReceiver() {
             @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                Log.d(TAG, "onChildAdded: " + dataSnapshot.getKey());
-
-                String type = dataSnapshot.child("type").getValue(String.class);
-
-                switch (type) {
-                    case Constants.BET_TYPE_OVERUNDER:
-                        OverUnderBet newOverUnderBet = (OverUnderBet)
-                                OverUnderBet.getBetFromDataSnapshot(dataSnapshot);
-                        mBetData.add(newOverUnderBet);
-                        mAdapter.notifyDataSetChanged();
-                        break;
-                    case Constants.BET_TYPE_YESNO:
-                        YesNoBet newYesNoBet = (YesNoBet)
-                                YesNoBet.getBetFromDataSnapshot(dataSnapshot);
-                        mBetData.add(newYesNoBet);
-                        mAdapter.notifyDataSetChanged();
-                    default:
-                        break;
-                }
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
+            public void onReceive(Context context, Intent intent) {
+                mRequestsReference = mFirebaseDatabase.getReference("users").child(mUid).child("requests");
+                mRequestsReference.addChildEventListener(mRequestListener);
             }
         };
 
-        mBetsReference.addChildEventListener(childEventListener);
+        mNewBetReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                mBetData = mData.getBetList();
+                mAdapter.notifyDataSetChanged();
+            }
+        };
+
+
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+
+        // register Listeners on start
         mAuth.addAuthStateListener(mAuthListener);
+
+        /*
+        LocalBroadcastManager.getInstance(getApplicationContext())
+                .registerReceiver(mFinishedLoadingReceiver, new IntentFilter("finishedLoadingUserData"));
+        */
+        LocalBroadcastManager.getInstance(getApplicationContext())
+                .registerReceiver(mNewBetReceiver, new IntentFilter(Constants.EVENT_BET_DATA_CHANGED));
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // remove Listeners on stop
         mAuth.removeAuthStateListener(mAuthListener);
+        mRequestsReference.removeEventListener(mRequestListener);
+
+        LocalBroadcastManager.getInstance(getApplicationContext())
+                .unregisterReceiver(mNewBetReceiver);
     }
 
     @Override
@@ -215,7 +186,7 @@ public class OverviewActivity extends AppCompatActivity {
         mUid = user.getUid();
         mRef.child(mUid).child("mail").setValue(mEmail);
         mRef.child(mUid).child("provider").setValue(provider);
-        mRef.child(mUid).child("userName").setValue(userName);
+        mRef.child(mUid).child("username").setValue(userName);
     }
 
     private void saveUserCredentialsToPreferences(FirebaseUser user) {
@@ -223,4 +194,115 @@ public class OverviewActivity extends AppCompatActivity {
                 .show();
     }
 
+    private FirebaseAuth.AuthStateListener createAuthStateListener() {
+        return new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    // User is signed in
+
+                    mUid = user.getUid();
+                    mUserName = user.getDisplayName();
+
+                    if (getIntent().getStringExtra("newUserToPutToFirebase") != null) {
+
+                        // get User name
+                        String userName = getIntent().getStringExtra("USERNAME");
+
+                        // set User credentials on Firebase "Users" node
+                        setUserCredentialsOnFirebase(user, userName);
+
+                        // TODO saveUserCredentialsToPreferences necessary?
+                        saveUserCredentialsToPreferences(user);
+                    }
+
+                    Intent intent = new Intent("finishedLoadingUserData");
+                    LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+                    Toast.makeText(getApplicationContext(), "User is signed in with id: " + user.getUid(), Toast.LENGTH_LONG).show();
+                } else {
+                    // User is signed out
+
+                    Toast.makeText(getApplicationContext(), "User is signed out", Toast.LENGTH_LONG).show();
+
+                    // start LoginActivity
+                    Intent intent = new Intent(OverviewActivity.this, LoginActivity.class);
+                    startActivity(intent);
+                    return;
+                }
+            }
+
+        };
+    }
+
+    private ChildEventListener createRequestListener() {
+        return new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                Log.d(TAG, "onRequestChildAdded: " + dataSnapshot.getKey());
+
+                mFirebaseDatabase.getReference("requests").child(dataSnapshot.getKey())
+                        .addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot dataSnapshot) {
+
+                                String type = dataSnapshot.child("type").getValue(String.class);
+
+                                switch (type) {
+                                    case Constants.BET_TYPE_OVERUNDER:
+                                        OverUnderBet newOverUnderBet =
+                                                OverUnderBet.getRequestFromDataSnapshot(dataSnapshot);
+                                        Intent overUnderIntent = newOverUnderBet
+                                                .createIntentFromBet(getApplicationContext(), AnswerRequestActivity.class);
+                                        startActivityForResult(overUnderIntent, 0);
+                                        break;
+                                    case Constants.BET_TYPE_YESNO:
+                                        YesNoBet newYesNoBet =
+                                                YesNoBet.getRequestFromDataSnapshot(dataSnapshot);
+                                        Intent yesNoIntent = newYesNoBet
+                                                .createIntentFromBet(getApplicationContext(), AnswerRequestActivity.class);
+                                        startActivityForResult(yesNoIntent, 0);
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
+
+                            }
+                        });
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        };
+    }
+
+    public static String getUid() {
+        return mUid;
+    }
+
+    public static Data getData() {
+        return mData;
+    }
 }

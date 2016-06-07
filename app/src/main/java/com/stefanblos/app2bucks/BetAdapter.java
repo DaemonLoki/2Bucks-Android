@@ -53,18 +53,22 @@ public class BetAdapter extends RecyclerView.Adapter<BetAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(BetAdapter.ViewHolder holder, int position) {
-        // TODO set the holder with bet text
         if (mDataSet.get(position).getClass() == OverUnderBet.class) {
             OverUnderBet bet = (OverUnderBet) mDataSet.get(position);
             holder.mTitleTextView.setText(bet.getTitle());
-            holder.mChallengerTextView.setText(bet.getChallengerUid());
-            holder.mOpponentTextView.setText(bet.getOpponentUid());
+            holder.mDescTextView.setText("Over/Under is: " + bet.getOverUnder().toString());
+            holder.mChallengerTextView.setText(OverviewActivity.getData()
+                    .getUserNameByUid(bet.getChallengerUid()));
+            holder.mOpponentTextView.setText(OverviewActivity.getData()
+                    .getUserNameByUid(bet.getOpponentUid()));
         } else if (mDataSet.get(position).getClass() == YesNoBet.class) {
             YesNoBet bet = (YesNoBet) mDataSet.get(position);
             holder.mTitleTextView.setText(bet.getTitle());
             holder.mDescTextView.setText(bet.getQuestion());
-            holder.mChallengerTextView.setText(bet.getChallengerUid());
-            holder.mOpponentTextView.setText(bet.getOpponentUid());
+            holder.mChallengerTextView.setText(OverviewActivity.getData()
+                    .getUserNameByUid(bet.getChallengerUid()));
+            holder.mOpponentTextView.setText(OverviewActivity.getData()
+                    .getUserNameByUid(bet.getOpponentUid()));
         }
     }
 
