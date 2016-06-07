@@ -15,4 +15,5 @@ public class Constants {
 
     // BROADCAST MESSAGES
     public static final String EVENT_BET_DATA_CHANGED = "BET_DATA_CHANGED";
+    public static final String EVENT_USER_DATA_LOADED = "USER_DATA_LOADED";
 }

@@ -45,7 +45,7 @@ public class OverviewActivity extends AppCompatActivity {
     private ChildEventListener mBetsListener;
     private DatabaseReference mRequestsReference;
     private ChildEventListener mRequestListener;
-    private boolean mListenersAdded;
+    private boolean mUserDataLoaded;
 
     private BroadcastReceiver mFinishedLoadingReceiver;
     private BroadcastReceiver mNewBetReceiver;
@@ -70,6 +70,8 @@ public class OverviewActivity extends AppCompatActivity {
         setContentView(R.layout.activity_overview);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        mUserDataLoaded = false;
 
         mAuth = FirebaseAuth.getInstance();
         mData = Data.getInstance(this);
@@ -128,10 +130,9 @@ public class OverviewActivity extends AppCompatActivity {
         // register Listeners on start
         mAuth.addAuthStateListener(mAuthListener);
 
-        /*
         LocalBroadcastManager.getInstance(getApplicationContext())
-                .registerReceiver(mFinishedLoadingReceiver, new IntentFilter("finishedLoadingUserData"));
-        */
+                .registerReceiver(mFinishedLoadingReceiver, new IntentFilter(Constants.EVENT_USER_DATA_LOADED));
+
         LocalBroadcastManager.getInstance(getApplicationContext())
                 .registerReceiver(mNewBetReceiver, new IntentFilter(Constants.EVENT_BET_DATA_CHANGED));
     }
@@ -201,7 +202,6 @@ public class OverviewActivity extends AppCompatActivity {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if (user != null) {
                     // User is signed in
-
                     mUid = user.getUid();
                     mUserName = user.getDisplayName();
 
@@ -217,9 +217,13 @@ public class OverviewActivity extends AppCompatActivity {
                         saveUserCredentialsToPreferences(user);
                     }
 
-                    Intent intent = new Intent("finishedLoadingUserData");
-                    LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
-                    Toast.makeText(getApplicationContext(), "User is signed in with id: " + user.getUid(), Toast.LENGTH_LONG).show();
+                    if (!mUserDataLoaded) {
+                        Intent intent = new Intent(Constants.EVENT_USER_DATA_LOADED);
+                        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+                        Toast.makeText(getApplicationContext(), "User is signed in with id: "
+                                + user.getUid(), Toast.LENGTH_LONG).show();
+                        mUserDataLoaded = true;
+                    }
                 } else {
                     // User is signed out
 
