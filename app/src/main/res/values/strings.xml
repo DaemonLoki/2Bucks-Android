@@ -7,6 +7,18 @@
     <string name="sign_out">Sign out</string>
     <string name="start_betting">START BETTING</string>
 
-    <!-- Facebook SDK requisities-->
+    <!--  SDK requisities-->
     <string name="facebook_app_id">1738281243087564</string>
+    <string name="type_of_bet">TYPE OF BET:</string>
+    Facebook
+    <!-- Activity titles -->
+    <string name="title_activity_choose_type">STEP 1/2: Choose Type</string>
+    <string name="title_activity_create_yes_no">STEP 2/2: Specify details</string>
+
+    <!-- Creating bets ressources -->
+    <string name="hint_put_title">Put a short title here!</string>
+    <string name="hint_put_question">Put the question to be voted for here!</string>
+    <string name="my_pick">MY PICK:</string>
+    <string name="opponent">OPPONENT:</string>
+    <string name="specify_over_under_value">Specify Over/Under value here</string>
 </resources>

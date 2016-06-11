@@ -55,7 +55,9 @@ public class Data {
                     public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                         // get values for user
                         User newUser = User.getUserFromDataSnapshot(dataSnapshot);
-                        mUserList.add(newUser);
+                        if (newUser.getUid() != OverviewActivity.getUid()) {
+                            mUserList.add(newUser);
+                        }
                     }
 
                     @Override
@@ -157,9 +159,19 @@ public class Data {
         return null;
     }
 
+    public String getUserUidByName(String userName) {
+        for (User user : mUserList) {
+            if (user.getUserName().equals(userName)) return user.getUid();
+        }
+
+        return null;
+    }
+
     public ArrayList<Object> getBetList() {
         return mBetList;
     }
+
+    public ArrayList<User> getUserList() { return  mUserList; }
 
     private void notifyBetDataChanged() {
         Collections.reverse(mBetList);

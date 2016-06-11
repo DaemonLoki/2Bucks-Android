@@ -1,12 +1,12 @@
 package com.stefanblos.app2bucks;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -16,7 +16,6 @@ import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
 import com.facebook.appevents.AppEventsLogger;
-import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -25,7 +24,6 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
 import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseUser;
@@ -39,8 +37,6 @@ public class LoginActivity extends AppCompatActivity {
     private EditText mMailField;
     private EditText mPasswordField;
 
-    private Button mLoginButton;
-    private View.OnClickListener mLoginPressed;
     private LoginButton mFbLoginButton;
     private CallbackManager mCallbackManager;
 
@@ -64,7 +60,6 @@ public class LoginActivity extends AppCompatActivity {
 
         mMailField = (EditText) findViewById(R.id.editTextLoginEmail);
         mPasswordField = (EditText) findViewById(R.id.editTextLoginPassword);
-        mLoginButton = (Button) findViewById(R.id.loginSignUpButton);
 
         // Facebook login pre-procedures
         mFbLoginButton = (LoginButton) findViewById(R.id.facebook_login_button);
@@ -72,33 +67,6 @@ public class LoginActivity extends AppCompatActivity {
         mCallbackManager = CallbackManager.Factory.create();
 
         newUser = false;
-
-        mLoginPressed = new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mEmail = mMailField.getText().toString();
-                mPassword = mPasswordField.getText().toString();
-
-                if (mEmail == "" || mPassword == "") {
-                    Toast.makeText(getApplicationContext(), "Specify user credentials",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                } else {
-                    mAuth.signInWithEmailAndPassword(mEmail, mPassword)
-                            .addOnCompleteListener(getParent(), new OnCompleteListener<AuthResult>() {
-                                @Override
-                                public void onComplete(@NonNull Task<AuthResult> task) {
-                                    // if sign in is successful, will be handled by AuthStateListener
-
-                                    if (!task.isSuccessful()) {
-                                        // Login was not successful, try creating new User
-                                        Log.w(TAG, "Sign in was not successful: " + task.getException());
-                                    }
-                                }
-                            });
-                }
-            }
-        };
 
         mAuthListener = new FirebaseAuth.AuthStateListener() {
 
@@ -110,14 +78,25 @@ public class LoginActivity extends AppCompatActivity {
                     // User is signed in
                     Toast.makeText(getApplicationContext(), "Successfully signed in", Toast.LENGTH_LONG).show();
 
+                    // save UserCredentialsToPreferences
+                    saveUserCredentialsToPreferences(user.getUid());
+
+
                     if (newUser) {
+                        // save UserCredentialsToFirebase
+                        saveUserCredentialsToFirebase(user);
+
+                        // continue to Onboarding
                         Intent intent = new Intent(LoginActivity.this, OnboardingActivity.class);
-                        intent.putExtra("newUserToPutToFirebase", "yes");
+                        intent.putExtra("USERID", user.getUid());
+                        onStop();
                         startActivity(intent);
                         return;
                     }
 
+                    Intent intent = new Intent(getApplicationContext(), OverviewActivity.class);
                     finish();
+                    startActivity(intent);
                     return;
                 }
             }
@@ -178,12 +157,14 @@ public class LoginActivity extends AppCompatActivity {
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
+
                             // if sign in is successful, will be handled by AuthStateListener
 
                             if (!task.isSuccessful()) {
 
                                 if (task.getException().getClass()
                                         .equals(FirebaseAuthInvalidUserException.class)) {
+
                                     Log.w(TAG, "Received a FirebaseAuthInvalidUserException");
 
                                     // creating a new user
@@ -227,6 +208,8 @@ public class LoginActivity extends AppCompatActivity {
     private void handleFacebookAccessToken(AccessToken token) {
         Log.d(TAG, "handleFacebookAccessToken: " + token);
 
+        // TODO Setup just like the email login
+
         AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
@@ -242,5 +225,27 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 });
 
+    }
+
+    private void saveUserCredentialsToPreferences(String uid) {
+        SharedPreferences settings = getSharedPreferences(Constants.PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+        editor.putString(Constants.MEMORY_USER_ID, uid);
+        editor.putString(Constants.MEMORY_USER_MAIL, mEmail);
+        editor.putString(Constants.MEMORY_USER_PW, mPassword);
+
+        editor.commit();
+    }
+
+    private void saveUserCredentialsToFirebase(FirebaseUser user) {
+        String uid = user.getUid();
+        String mail = user.getEmail();
+        String provider = user.getProviderId();
+
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference ref = database.getReference("users").child(uid);
+
+        ref.child("mail").setValue(mail);
+        ref.child("provider").setValue(provider);
     }
 }

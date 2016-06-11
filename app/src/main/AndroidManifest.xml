@@ -21,7 +21,12 @@
             </intent-filter>
         </activity>
         <activity android:name=".LoginActivity" />
-        <activity android:name=".OnboardingActivity" />
+        <activity android:name=".OnboardingActivity"
+            android:parentActivityName=".LoginActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".LoginActivity" />
+        </activity>
         <activity
             android:name="com.facebook.FacebookActivity"
             android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
@@ -32,7 +37,30 @@
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id" />
 
-        <activity android:name=".AnswerRequestActivity"></activity>
+        <activity android:name=".AnswerRequestActivity" />
+        <activity
+            android:name=".ChooseTypeActivity"
+            android:label="@string/title_activity_choose_type"
+            android:parentActivityName=".OverviewActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".OverviewActivity" />
+        </activity>
+        <activity
+            android:name=".CreateYesNoActivity"
+            android:label="@string/title_activity_create_yes_no"
+            android:parentActivityName=".ChooseTypeActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ChooseTypeActivity" />
+        </activity>
+        <activity android:name=".CreateOverUnderActivity"
+            android:label="@string/title_activity_create_yes_no"
+            android:parentActivityName=".ChooseTypeActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ChooseTypeActivity" />
+        </activity>
     </application>
 
 </manifest>

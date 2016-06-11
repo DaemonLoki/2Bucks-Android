@@ -4,9 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.provider.Settings;
-import android.provider.SyncStateContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -21,7 +20,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.facebook.FacebookSdk;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -41,8 +39,6 @@ public class OverviewActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
     private FirebaseDatabase mFirebaseDatabase;
-    private DatabaseReference mBetsReference;
-    private ChildEventListener mBetsListener;
     private DatabaseReference mRequestsReference;
     private ChildEventListener mRequestListener;
     private boolean mUserDataLoaded;
@@ -53,7 +49,6 @@ public class OverviewActivity extends AppCompatActivity {
     // User credentials
     private String mEmail;
     private static String mUid;
-    private String mUserName;
 
     // Recycler view related
     private RecyclerView mRecyclerView;
@@ -70,6 +65,14 @@ public class OverviewActivity extends AppCompatActivity {
         setContentView(R.layout.activity_overview);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        if (!areUserSettingsSaved()) {
+            // start LoginActivity
+            Intent intent = new Intent(OverviewActivity.this, LoginActivity.class);
+            finish();
+            startActivity(intent);
+            return;
+        }
 
         mUserDataLoaded = false;
 
@@ -95,6 +98,8 @@ public class OverviewActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Snackbar.make(view, "This will show the CreateBetActivity", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
+                Intent intent = new Intent(getApplicationContext(), ChooseTypeActivity.class);
+                startActivity(intent);
             }
         });
 
@@ -128,25 +133,15 @@ public class OverviewActivity extends AppCompatActivity {
         super.onStart();
 
         // register Listeners on start
-        mAuth.addAuthStateListener(mAuthListener);
-
-        LocalBroadcastManager.getInstance(getApplicationContext())
-                .registerReceiver(mFinishedLoadingReceiver, new IntentFilter(Constants.EVENT_USER_DATA_LOADED));
-
-        LocalBroadcastManager.getInstance(getApplicationContext())
-                .registerReceiver(mNewBetReceiver, new IntentFilter(Constants.EVENT_BET_DATA_CHANGED));
+        registerListeners();
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    protected void onStop() {
+        super.onStop();
 
         // remove Listeners on stop
-        mAuth.removeAuthStateListener(mAuthListener);
-        mRequestsReference.removeEventListener(mRequestListener);
-
-        LocalBroadcastManager.getInstance(getApplicationContext())
-                .unregisterReceiver(mNewBetReceiver);
+        removeListeners();
     }
 
     @Override
@@ -167,7 +162,12 @@ public class OverviewActivity extends AppCompatActivity {
         if (id == R.id.action_settings) {
             return true;
         } else if (id == R.id.action_signout) {
-            FirebaseAuth.getInstance().signOut();
+            if (mAuth != null) {
+                removeUserSettingsFromSharedPreferences();
+                mAuth.signOut();
+            } else {
+                FirebaseAuth.getInstance().signOut();
+            }
             return true;
         }
 
@@ -203,36 +203,32 @@ public class OverviewActivity extends AppCompatActivity {
                 if (user != null) {
                     // User is signed in
                     mUid = user.getUid();
-                    mUserName = user.getDisplayName();
-
-                    if (getIntent().getStringExtra("newUserToPutToFirebase") != null) {
-
-                        // get User name
-                        String userName = getIntent().getStringExtra("USERNAME");
-
-                        // set User credentials on Firebase "Users" node
-                        setUserCredentialsOnFirebase(user, userName);
-
-                        // TODO saveUserCredentialsToPreferences necessary?
-                        saveUserCredentialsToPreferences(user);
-                    }
 
                     if (!mUserDataLoaded) {
                         Intent intent = new Intent(Constants.EVENT_USER_DATA_LOADED);
                         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
-                        Toast.makeText(getApplicationContext(), "User is signed in with id: "
-                                + user.getUid(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(getApplicationContext(), "You are signed in",
+                                Toast.LENGTH_LONG).show();
                         mUserDataLoaded = true;
                     }
                 } else {
+
                     // User is signed out
 
-                    Toast.makeText(getApplicationContext(), "User is signed out", Toast.LENGTH_LONG).show();
+                    // try to load the user settings from memory
+                    if (!areUserSettingsSaved()) {
 
-                    // start LoginActivity
-                    Intent intent = new Intent(OverviewActivity.this, LoginActivity.class);
-                    startActivity(intent);
-                    return;
+                        // start LoginActivity
+                        Intent intent = new Intent(OverviewActivity.this, LoginActivity.class);
+                        finish();
+                        startActivity(intent);
+                        return;
+                    }
+
+                    Toast.makeText(getApplicationContext(), "User is not signed in", Toast.LENGTH_LONG).show();
+
+                    // TODO try to login with user settings?
+
                 }
             }
 
@@ -258,15 +254,17 @@ public class OverviewActivity extends AppCompatActivity {
                                                 OverUnderBet.getRequestFromDataSnapshot(dataSnapshot);
                                         Intent overUnderIntent = newOverUnderBet
                                                 .createIntentFromBet(getApplicationContext(), AnswerRequestActivity.class);
+                                        removeListeners();
                                         startActivityForResult(overUnderIntent, 0);
-                                        break;
+                                        return;
                                     case Constants.BET_TYPE_YESNO:
                                         YesNoBet newYesNoBet =
                                                 YesNoBet.getRequestFromDataSnapshot(dataSnapshot);
                                         Intent yesNoIntent = newYesNoBet
                                                 .createIntentFromBet(getApplicationContext(), AnswerRequestActivity.class);
+                                        removeListeners();
                                         startActivityForResult(yesNoIntent, 0);
-                                        break;
+                                        return;
                                     default:
                                         break;
                                 }
@@ -300,6 +298,57 @@ public class OverviewActivity extends AppCompatActivity {
 
             }
         };
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        registerListeners();
+    }
+
+    private void removeUserSettingsFromSharedPreferences() {
+        SharedPreferences settings = getSharedPreferences(Constants.PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+        editor.clear();
+        editor.commit();
+    }
+
+    private boolean areUserSettingsSaved() {
+
+        SharedPreferences settings = getSharedPreferences(Constants.PREFS_NAME, 0);
+        String id = settings.getString(Constants.MEMORY_USER_ID,
+                Constants.ERROR_GETTING_PREFS);
+
+        if (id == Constants.ERROR_GETTING_PREFS) {
+            return false;
+        } else {
+            mUid = id;
+        }
+
+        return true;
+    }
+
+    private void registerListeners() {
+        mAuth.addAuthStateListener(mAuthListener);
+
+        LocalBroadcastManager.getInstance(getApplicationContext())
+                .registerReceiver(mFinishedLoadingReceiver, new IntentFilter(Constants.EVENT_USER_DATA_LOADED));
+
+        LocalBroadcastManager.getInstance(getApplicationContext())
+                .registerReceiver(mNewBetReceiver, new IntentFilter(Constants.EVENT_BET_DATA_CHANGED));
+    }
+
+    private void removeListeners() {
+        if (mAuth != null) {
+            mAuth.removeAuthStateListener(mAuthListener);
+        }
+        if (mRequestsReference != null) {
+            mRequestsReference.removeEventListener(mRequestListener);
+        }
+
+        LocalBroadcastManager.getInstance(getApplicationContext())
+                .unregisterReceiver(mNewBetReceiver);
     }
 
     public static String getUid() {

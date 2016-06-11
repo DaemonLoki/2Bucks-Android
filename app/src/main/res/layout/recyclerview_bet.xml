@@ -7,38 +7,95 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/recycler_bet_title"
+        android:padding="16dp"
+        android:background="@color/colorPrimary"
+        android:layout_gravity="center"
+        android:textAlignment="center"
+        android:textColor="@color/colorWhiteText"
+        android:textStyle="bold"
+        android:elevation="4dp"
         android:text="TITLE_OF_BET"/>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/recycler_bet_description"
-        android:text="DESCRIPTION_OF_BET"/>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="115dp"
         android:orientation="horizontal">
 
-        <TextView
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:layout_margin="8dp"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:padding="4dp"
+                android:src="@drawable/no_button"
+                android:id="@+id/recycler_bet_challenger_pick"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CHALLENGER"
+                android:layout_gravity="center"
+                android:id="@+id/recycler_bet_challenger"/>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="CHALLENGER"
-            android:id="@+id/recycler_bet_challenger"/>
+            android:layout_margin="8dp"
+            android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:id="@+id/recycler_bet_description"
+            android:textSize="32sp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:text="5.5"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center"
             android:text="vs"/>
 
-        <TextView
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="OPPONENT"
-            android:textAlignment="textEnd"
-            android:id="@+id/recycler_bet_opponent"/>
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:layout_margin="8dp"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:padding="4dp"
+                android:src="@drawable/no_button"
+                android:maxHeight="30dp"
+                android:maxWidth="30dp"
+                android:layout_gravity="center"
+                android:id="@+id/recycler_bet_opponent_pick"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OPPONENT"
+                android:layout_gravity="center"
+                android:id="@+id/recycler_bet_opponent"/>
+
+        </LinearLayout>
 
     </LinearLayout>
 
